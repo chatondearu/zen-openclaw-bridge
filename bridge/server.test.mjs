@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { createBridge } from './server.mjs'
@@ -34,4 +35,34 @@ test('auth, event inbox and action round-trip', async (t) => {
   assert.equal(action2.params.tabId, 1)
   await fetch(`${base}/actions/${action2.id}/result`, { method: 'POST', headers: auth, body: JSON.stringify({ ok: false, error: 'paused' }) })
   assert.equal((await call2).status, 502)
+})
+
+test('chat is relayed to the OpenClaw gateway with a per-session user', async (t) => {
+  let seen
+  const gw = createServer((req, res) => {
+    let body = ''
+    req.on('data', c => body += c).on('end', () => {
+      seen = { auth: req.headers.authorization, path: req.url, ...JSON.parse(body) }
+      res.end(JSON.stringify({ choices: [{ message: { content: 'pong' } }] }))
+    })
+  })
+  await new Promise(r => gw.listen(0, '127.0.0.1', r))
+  const server = createBridge({
+    token: 'secret',
+    inboxDir: mkdtempSync(join(tmpdir(), 'zen-bridge-')),
+    gateway: { url: `http://127.0.0.1:${gw.address().port}`, token: 'gw', agent: 'openclaw/default' },
+  })
+  await new Promise(r => server.listen(0, '127.0.0.1', r))
+  t.after(() => { server.close(); gw.close() })
+
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/chat`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer secret' },
+    body: JSON.stringify({ message: 'ping', session: 's1' }),
+  })
+  assert.deepEqual(await res.json(), { ok: true, reply: 'pong' })
+  assert.equal(seen.path, '/v1/chat/completions')
+  assert.equal(seen.auth, 'Bearer gw')
+  assert.equal(seen.user, 'zen-s1')
+  assert.equal(seen.messages[0].content, 'ping')
 })

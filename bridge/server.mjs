@@ -1,5 +1,5 @@
 // Loopback bridge between the Zen WebExtension and OpenClaw.
-// Zero dependencies: node:http + node:fs. Binds 127.0.0.1 only, every route but /health needs the bearer token.
+// Zero dependencies: node:http + node:fs. Binds 127.0.0.1 by default, every route but /health needs the bearer token.
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -26,7 +26,7 @@ export function loadToken(file = join(homedir(), '.config', 'zen-openclaw-bridge
   }
 }
 
-export function createBridge({ token, inboxDir }) {
+export function createBridge({ token, inboxDir, gateway = {} }) {
   mkdirSync(inboxDir, { recursive: true })
   const queue = [] // actions waiting for the extension
   const waiters = [] // extension long-polls waiting for an action
@@ -98,6 +98,28 @@ export function createBridge({ token, inboxDir }) {
         queue.splice(i, 1)
       send(res, result.ok ? 200 : 502, result)
     },
+    // Extension chat -> OpenClaw gateway (OpenAI-compatible endpoint). The gateway token never reaches the browser.
+    'POST /chat': async (req, res) => {
+      const { message, session } = await readJson(req)
+      if (typeof message !== 'string' || !message.trim())
+        return send(res, 400, { ok: false, error: 'message required' })
+      let r
+      try {
+        r = await fetch(`${gateway.url.replace(/\/$/, '')}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...(gateway.token && { authorization: `Bearer ${gateway.token}` }) },
+          // Same `user` => same OpenClaw session; a new session id from the extension starts a new one.
+          body: JSON.stringify({ model: gateway.agent, user: `zen-${String(session ?? 'default').slice(0, 64)}`, messages: [{ role: 'user', content: message }] }),
+        })
+      }
+      catch (e) {
+        return send(res, 502, { ok: false, error: `gateway unreachable at ${gateway.url}: ${e.cause?.code ?? e.message}` })
+      }
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok)
+        return send(res, 502, { ok: false, error: body.error?.message ?? `gateway answered ${r.status} (is gateway.http.endpoints.chatCompletions enabled?)` })
+      send(res, 200, { ok: true, reply: body.choices?.[0]?.message?.content ?? '' })
+    },
     // Extension long-poll for the next action.
     'GET /actions/next': async (req, res) => {
       const next = queue.shift()
@@ -152,12 +174,20 @@ export function createBridge({ token, inboxDir }) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.ZEN_BRIDGE_PORT ?? 18901)
+  // Non-loopback only behind TLS (reverse proxy, Tailscale): the token travels in clear over plain HTTP.
+  const host = process.env.ZEN_BRIDGE_HOST ?? '127.0.0.1'
+  const gateway = {
+    url: process.env.OPENCLAW_GATEWAY_URL ?? 'http://127.0.0.1:18789',
+    token: process.env.OPENCLAW_GATEWAY_TOKEN,
+    agent: process.env.OPENCLAW_AGENT ?? 'openclaw/default',
+  }
   const inboxDir = process.env.ZEN_BRIDGE_INBOX
     ?? (process.env.OPENCLAW_STATE_DIR ? join(process.env.OPENCLAW_STATE_DIR, 'inbox', 'web') : join(process.cwd(), 'inbox'))
   const token = loadToken()
-  createBridge({ token, inboxDir }).listen(port, '127.0.0.1', () => {
-    console.log(`zen-openclaw-bridge listening on http://127.0.0.1:${port}`)
+  createBridge({ token, inboxDir, gateway }).listen(port, host, () => {
+    console.log(`zen-openclaw-bridge listening on http://${host}:${port}`)
     console.log(`inbox: ${inboxDir}`)
+    console.log(`chat -> ${gateway.url} (${gateway.agent})`)
     console.log(`pairing token: ${token}`)
   })
 }
