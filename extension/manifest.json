@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Zen ↔ OpenClaw bridge",
+  "version": "0.1.0",
+  "description": "Observe allowlisted tabs and let a local OpenClaw act on them through a loopback bridge.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "zen-openclaw-bridge@chatondearu.github.io",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "alarms"
+  ],
+  "host_permissions": [
+    "*://*.slack.com/*",
+    "http://127.0.0.1/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

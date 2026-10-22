@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Zen ↔ OpenClaw bridge</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; max-width: 36rem; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin: 1rem 0 .25rem; font-weight: 600; }
+    input[type=text], input[type=password], textarea { width: 100%; box-sizing: border-box; }
+    .pause { font-weight: 400; }
+    #status { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Zen ↔ OpenClaw bridge</h1>
+  <form id="form">
+    <label for="bridgeUrl">Bridge URL (loopback)</label>
+    <input id="bridgeUrl" type="text" required pattern="http://127\.0\.0\.1:\d+/?">
+    <label for="token">Pairing token</label>
+    <input id="token" type="password" autocomplete="off">
+    <label for="allowlist">Allowed origins (one hostname per line, <code>*.</code> for subdomains)</label>
+    <textarea id="allowlist" rows="5"></textarea>
+    <label class="pause"><input id="paused" type="checkbox"> Pause — send nothing, run no action</label>
+    <p><button type="submit">Save</button></p>
+  </form>
+  <p id="status" role="status"></p>
+  <script src="options.js"></script>
+</body>
+</html>
