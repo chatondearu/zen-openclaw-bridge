@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test bridge/*.test.mjs
+      - run: npx --yes web-ext@8 lint -s extension
+      # Tag push => build the .xpi and attach it to a GitHub release.
+      - if: startsWith(github.ref, 'refs/tags/v')
+        name: Tag must match manifest version
+        run: test "v$(node -p "require('./extension/manifest.json').version")" = "$GITHUB_REF_NAME"
+      - if: startsWith(github.ref, 'refs/tags/v')
+        run: npx --yes web-ext@8 build -s extension -a dist --filename "zen-openclaw-bridge-$GITHUB_REF_NAME.xpi"
+      - if: startsWith(github.ref, 'refs/tags/v')
+        run: gh release create "$GITHUB_REF_NAME" dist/*.xpi --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
