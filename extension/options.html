@@ -6,7 +6,7 @@
   <style>
     body { font: 14px system-ui, sans-serif; max-width: 36rem; margin: 2rem auto; padding: 0 1rem; }
     label { display: block; margin: 1rem 0 .25rem; font-weight: 600; }
-    input[type=text], input[type=password], textarea { width: 100%; box-sizing: border-box; }
+    input[type=url], input[type=password], textarea { width: 100%; box-sizing: border-box; }
     .pause { font-weight: 400; }
     #status { margin-top: 1rem; }
   </style>
@@ -14,8 +14,9 @@
 <body>
   <h1>Zen ↔ OpenClaw bridge</h1>
   <form id="form">
-    <label for="bridgeUrl">Bridge URL (loopback)</label>
-    <input id="bridgeUrl" type="text" required pattern="http://127\.0\.0\.1:\d+/?">
+    <label for="bridgeUrl">Bridge URL</label>
+    <input id="bridgeUrl" type="url" required placeholder="http://127.0.0.1:18901 or https://bridge.example.com">
+    <small>Local: <code>http://127.0.0.1:&lt;port&gt;</code>. Remote: HTTPS only, the token would travel in clear otherwise.</small>
     <label for="token">Pairing token</label>
     <input id="token" type="password" autocomplete="off">
     <label for="allowlist">Allowed origins (one hostname per line, <code>*.</code> for subdomains)</label>
@@ -24,6 +25,7 @@
     <p><button type="submit">Save</button></p>
   </form>
   <p id="status" role="status"></p>
+  <script src="defaults.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

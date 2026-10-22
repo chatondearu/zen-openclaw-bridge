@@ -1,7 +1,5 @@
 // Event page: the single gate between allowlisted tabs and the loopback bridge.
 // Nothing reaches the bridge when paused, unpaired, or for a non-allowlisted origin.
-const DEFAULTS = { bridgeUrl: 'http://127.0.0.1:18901', token: '', allowlist: ['*.slack.com'], paused: false }
-
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function active() {
@@ -50,6 +48,8 @@ browser.tabs.onUpdated.addListener(async (tabId, info, tab) => {
 })
 
 browser.runtime.onMessage.addListener(async (msg, sender) => {
+  if (msg?.type === 'chat.send' && sender.url?.startsWith(browser.runtime.getURL('')))
+    return chat(msg.text)
   const cfg = await active()
   if (!cfg || msg?.type !== 'page.observed' || !allowed(sender.tab?.url, cfg.allowlist))
     return
@@ -60,6 +60,35 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
   }).catch(e => console.warn('[zen-openclaw] event not delivered', e))
   pollLoop()
 })
+
+// --- Chat -------------------------------------------------------------------
+// History lives in storage so the popup can close mid-request and still show the reply.
+
+const newChat = () => ({ session: crypto.randomUUID(), messages: [] })
+
+async function chat(text) {
+  const { chat } = await browser.storage.local.get({ chat: newChat() })
+  chat.messages.push({ role: 'user', text })
+  await browser.storage.local.set({ chat })
+  const cfg = await active()
+  let reply
+  try {
+    if (!cfg)
+      throw new Error('Paused or not paired: open the options.')
+    const res = await bridge(cfg, '/chat', { method: 'POST', body: JSON.stringify({ message: text, session: chat.session }) })
+    const body = await res.json().catch(() => ({}))
+    reply = body.ok ? { role: 'assistant', text: body.reply } : { role: 'error', text: body.error ?? `bridge answered ${res.status}` }
+  }
+  catch (e) {
+    reply = { role: 'error', text: String(e.message ?? e) }
+  }
+  // Re-read: the user may have started a new session while waiting.
+  const now = (await browser.storage.local.get({ chat: newChat() })).chat
+  if (now.session === chat.session) {
+    now.messages.push(reply)
+    await browser.storage.local.set({ chat: now })
+  }
+}
 
 // --- Actor ------------------------------------------------------------------
 // Functions below run inside the page via scripting.executeScript; they return { error } instead of throwing.
@@ -183,8 +212,12 @@ function start() {
   pollLoop()
 }
 
-browser.runtime.onInstalled.addListener(() => browser.alarms.create('wake', { periodInMinutes: 1 }))
+browser.runtime.onInstalled.addListener(({ reason }) => {
+  browser.alarms.create('wake', { periodInMinutes: 1 })
+  if (reason === 'install')
+    browser.runtime.openOptionsPage()
+})
 browser.runtime.onStartup.addListener(() => browser.alarms.create('wake', { periodInMinutes: 1 }))
 browser.alarms.onAlarm.addListener(pollLoop)
-browser.storage.onChanged.addListener(start)
+browser.storage.onChanged.addListener(changes => Object.keys(changes).some(k => k in DEFAULTS) && start())
 start()

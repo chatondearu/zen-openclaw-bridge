@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Zen ↔ OpenClaw bridge",
-  "version": "0.1.0",
-  "description": "Observe allowlisted tabs and let a local OpenClaw act on them through a loopback bridge.",
+  "version": "0.2.0",
+  "description": "Observe allowlisted tabs, let OpenClaw act on them and chat with it through a bridge you control.",
   "browser_specific_settings": {
     "gecko": {
       "id": "zen-openclaw-bridge@chatondearu.github.io",
@@ -22,18 +22,29 @@
   ],
   "host_permissions": [
     "*://*.slack.com/*",
-    "http://127.0.0.1/*"
+    "https://mail.google.com/*",
+    "https://calendar.google.com/*",
+    "https://github.com/*",
+    "https://linear.app/*",
+    "https://claude.ai/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
   "optional_host_permissions": [
     "*://*/*"
   ],
   "background": {
     "scripts": [
+      "defaults.js",
       "background.js"
     ]
   },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
+  },
+  "action": {
+    "default_title": "Chat with OpenClaw",
+    "default_popup": "chat.html"
   }
 }
