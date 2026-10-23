@@ -73,19 +73,22 @@ UI strings, commit messages, PR titles and descriptions, issues, release notes.
 
 ### What this is
 
-A Firefox/Zen MV3 WebExtension plus a zero-dependency Node bridge that connects
+A Firefox/Zen WebExtension (MV2, persistent background) plus a zero-dependency Node bridge that connects
 signed-in browser tabs to an OpenClaw agent: observe allowlisted sites, act on
 them on request, and chat with the agent. Kickoff brief: [PROMPT.md](PROMPT.md).
 
 | Path | Role |
 | ---- | ---- |
-| `extension/manifest.json` | MV3 manifest (Gecko id `zen-openclaw-bridge@chatondearu.github.io`, min Firefox 128) |
+| `extension/manifest.json` | MV2 manifest, persistent background (Gecko id `zen-openclaw-bridge@chatondearu.github.io`, min Firefox 128) |
 | `extension/defaults.js` | Shared defaults (bridge URL, allowlist…) loaded by every extension page |
-| `extension/background.js` | Event page: single gate to the bridge — observer injection, actor actions, chat, long-poll |
+| `extension/background.js` | Persistent background: single gate to the bridge — observer injection, actor actions, chat, long-poll |
 | `extension/observer.js` | Injected into allowlisted tabs; reports title changes + text excerpt |
 | `extension/options.*` | Bridge URL, pairing token, allowlist, Pause |
 | `extension/chat.*` | Toolbar popup chat (also opens in a tab with `#tab`) |
-| `bridge/server.mjs` | HTTP bridge: `/health`, `/events`, `/actions`, `/actions/next`, `/actions/:id/result`, `/chat` |
+| `bridge/server.mjs` | HTTP bridge: `/health`, `/events`, `/events/recent`, `/actions`, `/actions/next`, `/actions/:id/result`, `/chat` |
+| `bridge/client.mjs` | Bridge client + action vocabulary shared by the CLI and the plugin |
+| `bin/zen-bridge.mjs` | CLI: `tabs`, `snapshot`, `focus`, `click`, `type`, `events` |
+| `openclaw-plugin/` | OpenClaw tool plugin: one `zen_browser` tool (plain JS, no build) |
 | `bridge/server.test.mjs` | `node:test` suite |
 | `docs/ADR-*.md` | Architecture decisions (this repo keeps ADRs here, no `foam/`) |
 | `.github/workflows/ci.yml` | Tests + lint on push/PR; `.xpi` release on `v*` tags |
@@ -108,7 +111,8 @@ a feature truly needs one.
 - **No AI attribution**: no `Co-Authored-By: Claude` trailer, no "Generated with
   Claude Code" footer in commits or PRs.
 - Small changes go straight to `main` and are pushed; CI must stay green.
-- **Release**: bump `version` in `extension/manifest.json`, commit, then
+- **Release**: bump `version` in `extension/manifest.json` (and
+  `openclaw-plugin/package.json` + `openclaw.plugin.json`), commit, then
   `git tag vX.Y.Z && git push origin vX.Y.Z`. CI fails if the tag and the
   manifest version differ.
 - Style: no semicolons, 2-space indent, single quotes (Anthony Fu style), plain
@@ -131,8 +135,13 @@ a feature truly needs one.
 
 ### Gotchas
 
-- Firefox MV3 background is an **event page** (`background.scripts`) and can be
-  suspended: a 1-minute alarm and tab events restart the long-poll.
+- Stay on **MV2 with `persistent: true`**: an MV3 event page is suspended after
+  ~30 s even with a pending fetch, which silently stops the action long-poll
+  (ADR-003).
+- `openclaw-plugin/` must keep `catalogMode: "direct-only"` and a description
+  that says "not the `browser` tool": small local models otherwise pick the
+  built-in Chrome tool. Validate with
+  `openclaw plugins validate --root openclaw-plugin --entry ./index.js`.
 - Functions passed to `scripting.executeScript({ func })` are serialized: they
   cannot use outer variables and should return `{ error }` instead of throwing.
 - `storage.onChanged` restarts observers only for keys in `DEFAULTS`; chat

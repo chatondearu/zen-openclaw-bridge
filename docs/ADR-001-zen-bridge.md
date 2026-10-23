@@ -1,6 +1,6 @@
 # ADR-001 — Zen WebExtension + loopback bridge for OpenClaw
 
-- Status: Accepted (local-only bridge amended by ADR-002)
+- Status: Accepted (local-only bridge amended by ADR-002; MV3 event page replaced by ADR-003)
 - Date: 2026-10-22
 
 ## Context

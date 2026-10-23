@@ -17,7 +17,8 @@ Claude and its artifacts (`claude.ai`). Editable in the options.
 By default everything stays local: extension → bridge `http://127.0.0.1:18901` →
 JSON files in the OpenClaw inbox. The bridge can also run on another machine
 (HTTPS). Design and trade-offs: [ADR-001](docs/ADR-001-zen-bridge.md),
-[ADR-002](docs/ADR-002-remote-bridge-and-chat.md).
+[ADR-002](docs/ADR-002-remote-bridge-and-chat.md),
+[ADR-003](docs/ADR-003-persistent-background-cli-and-openclaw-tool.md).
 
 ## Requirements
 
@@ -99,12 +100,36 @@ act '{"action":"page.click","params":{"tabId":12,"selector":"[data-qa=\"channel_
 act '{"action":"page.type","params":{"tabId":12,"selector":"[data-qa=\"message_input\"] [contenteditable]","text":"draft"}}'
 ```
 
-Response: `{"ok":true,"result":…}` or `{"ok":false,"error":"…"}` (HTTP 502).
-20 s timeout. After a long idle period the first action may wait up to ~1 min
-(event page wake-up, see ADR-001).
+Response: `{"ok":true,"result":…}` or `{"ok":false,"error":"…"}` (HTTP 502),
+20 s timeout. No action ever posts a message: the human confirms.
 
-For the OpenClaw agent: read/watch `inbox/web/*.json`, and call `/actions` to
-act. No action ever posts a message: the human confirms.
+### CLI
+
+Same actions, token read from `~/.config/zen-openclaw-bridge/token`:
+
+```bash
+node bin/zen-bridge.mjs tabs
+node bin/zen-bridge.mjs events 5          # latest signals, add --text for excerpts
+node bin/zen-bridge.mjs snapshot 12
+node bin/zen-bridge.mjs focus https://app.slack.com/client
+node bin/zen-bridge.mjs click 12 '[data-qa="channel_sidebar_name_general"]'
+node bin/zen-bridge.mjs type 12 '[data-qa="message_input"] [contenteditable]' draft text
+```
+
+`ZEN_BRIDGE_URL` points it at another bridge. Exit code 1 when the bridge
+reports an error.
+
+### OpenClaw tool
+
+`openclaw-plugin/` adds one native agent tool, `zen_browser`
+(`action`: `tabs`, `snapshot`, `events`, `focus`, `click`, `type`):
+
+```bash
+openclaw plugins install --link /path/to/zen-openclaw-bridge/openclaw-plugin
+```
+
+The agent then answers "what's in my tabs?" without shell access. Events also
+land in `inbox/web/*.json` for agents that prefer files.
 
 ## 5. Chat with OpenClaw
 
@@ -163,7 +188,7 @@ Treat this bridge as **operator access** to your allowlisted tabs.
 
 It drives Chromium through `chrome.debugger` (CDP). Zen is Firefox-based, and
 Firefox does not expose that API to extensions. This extension only uses Firefox
-WebExtension APIs (`tabs`, `scripting`, `storage`, `alarms`).
+WebExtension APIs (`tabs`, `scripting`, `storage`).
 
 ## Releases
 
