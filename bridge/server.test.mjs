@@ -20,6 +20,13 @@ test('auth, event inbox and action round-trip', async (t) => {
   const [file] = readdirSync(inboxDir)
   assert.equal(JSON.parse(readFileSync(join(inboxDir, file), 'utf8')).type, 'tab.seen')
 
+  // Recent events drop the page text unless asked.
+  await fetch(`${base}/events`, { method: 'POST', headers: auth, body: JSON.stringify({ type: 'page.observed', text: 'secret page' }) })
+  const recent = await (await fetch(`${base}/events/recent?limit=1`, { headers: auth })).json()
+  assert.deepEqual([recent.length, recent[0].type, 'text' in recent[0]], [1, 'page.observed', false])
+  const withText = await (await fetch(`${base}/events/recent?limit=1&text=1`, { headers: auth })).json()
+  assert.equal(withText[0].text, 'secret page')
+
   // OpenClaw asks, the fake extension polls and answers.
   const call = fetch(`${base}/actions`, { method: 'POST', headers: auth, body: JSON.stringify({ action: 'tabs.list' }) })
   const action = await (await fetch(`${base}/actions/next`, { headers: auth })).json()

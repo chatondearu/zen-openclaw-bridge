@@ -1,7 +1,7 @@
 // Loopback bridge between the Zen WebExtension and OpenClaw.
 // Zero dependencies: node:http + node:fs. Binds 127.0.0.1 by default, every route but /health needs the bearer token.
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -78,6 +78,16 @@ export function createBridge({ token, inboxDir, gateway = {} }) {
       const file = join(inboxDir, `${ts.replace(/[:.]/g, '-')}-${randomBytes(3).toString('hex')}.json`)
       writeFileSync(file, `${JSON.stringify({ receivedAt: ts, ...event }, null, 2)}\n`)
       send(res, 202, { file })
+    },
+    // Latest observed events, newest first; text is dropped unless ?text=1 to keep agent context small.
+    'GET /events/recent': async (req, res) => {
+      const q = new URL(req.url, 'http://x').searchParams
+      const limit = Math.min(Number(q.get('limit')) || 10, 100)
+      const files = readdirSync(inboxDir).filter(f => f.endsWith('.json')).sort().reverse().slice(0, limit)
+      send(res, 200, files.map((f) => {
+        const { text, ...event } = JSON.parse(readFileSync(join(inboxDir, f), 'utf8'))
+        return q.get('text') === '1' ? { ...event, text } : event
+      }))
     },
     // OpenClaw -> extension: blocks until the extension answers or times out.
     'POST /actions': async (req, res) => {
