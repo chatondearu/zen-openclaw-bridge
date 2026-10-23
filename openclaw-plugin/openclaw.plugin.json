@@ -1,0 +1,19 @@
+{
+  "id": "zen-browser",
+  "name": "Zen Browser",
+  "description": "Read and act on the human's signed-in Zen browser tabs through zen-openclaw-bridge.",
+  "version": "0.3.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "zen_browser"
+    ]
+  }
+}
