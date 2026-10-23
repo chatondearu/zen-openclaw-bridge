@@ -1,7 +1,7 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "Zen ↔ OpenClaw bridge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Observe allowlisted tabs, let OpenClaw act on them and chat with it through a bridge you control.",
   "browser_specific_settings": {
     "gecko": {
@@ -18,9 +18,6 @@
     "storage",
     "tabs",
     "scripting",
-    "alarms"
-  ],
-  "host_permissions": [
     "*://*.slack.com/*",
     "https://mail.google.com/*",
     "https://calendar.google.com/*",
@@ -30,20 +27,21 @@
     "http://127.0.0.1/*",
     "http://localhost/*"
   ],
-  "optional_host_permissions": [
-    "*://*/*"
-  ],
   "background": {
     "scripts": [
       "defaults.js",
       "background.js"
-    ]
+    ],
+    "persistent": true
   },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
-  "action": {
+  "optional_permissions": [
+    "*://*/*"
+  ],
+  "browser_action": {
     "default_title": "Chat with OpenClaw",
     "default_popup": "chat.html"
   }

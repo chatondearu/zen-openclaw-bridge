@@ -1,4 +1,4 @@
-// Event page: the single gate between allowlisted tabs and the loopback bridge.
+// Persistent background page: the single gate between allowlisted tabs and the bridge.
 // Nothing reaches the bridge when paused, unpaired, or for a non-allowlisted origin.
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
@@ -176,7 +176,7 @@ async function run(action, params) {
   }
 }
 
-// Long-poll the bridge for actions. The event page may be suspended; the alarm and any tab event wake it up again.
+// Long-poll the bridge for actions; the persistent background keeps this loop alive.
 let polling = false
 async function pollLoop() {
   if (polling)
@@ -212,12 +212,6 @@ function start() {
   pollLoop()
 }
 
-browser.runtime.onInstalled.addListener(({ reason }) => {
-  browser.alarms.create('wake', { periodInMinutes: 1 })
-  if (reason === 'install')
-    browser.runtime.openOptionsPage()
-})
-browser.runtime.onStartup.addListener(() => browser.alarms.create('wake', { periodInMinutes: 1 }))
-browser.alarms.onAlarm.addListener(pollLoop)
+browser.runtime.onInstalled.addListener(({ reason }) => reason === 'install' && browser.runtime.openOptionsPage())
 browser.storage.onChanged.addListener(changes => Object.keys(changes).some(k => k in DEFAULTS) && start())
 start()
