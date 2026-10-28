@@ -199,6 +199,41 @@ const actions = {
   'page.snapshot': async (p, cfg) => inPage((await allowedTab(p, cfg)).id, pageSnapshot),
   'page.click': async (p, cfg) => inPage((await allowedTab(p, cfg)).id, pageClick, [String(p.selector)]),
   'page.type': async (p, cfg) => inPage((await allowedTab(p, cfg)).id, pageType, [String(p.selector), String(p.text ?? '')]),
+  // Outbound OS toast (not a page actor). Persona from OpenClaw; click opens chat with seed.
+  'notify.show': async (p, cfg) => {
+    if (cfg.cyrusNotifications === false)
+      return { skipped: true, reason: 'cyrusNotifications disabled' }
+    const name = String(p.persona?.name ?? 'Cyrus')
+    const emoji = String(p.persona?.emoji ?? '⚙️')
+    const title = String(p.title ?? `${emoji} ${name}`).slice(0, 120)
+    const body = capNotifyBody(p.body ?? '')
+    const chatSeed = String(p.chatSeed ?? body)
+    const id = `cyrus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const { notifySeeds = {} } = await browser.storage.local.get({ notifySeeds: {} })
+    notifySeeds[id] = chatSeed
+    await browser.storage.local.set({ notifySeeds })
+    await browser.notifications.create(id, { type: 'basic', title, message: body })
+    return { id }
+  },
+}
+
+if (browser.notifications?.onClicked) {
+  browser.notifications.onClicked.addListener(async (id) => {
+    const { notifySeeds = {} } = await browser.storage.local.get({ notifySeeds: {} })
+    const seed = notifySeeds[id]
+    if (seed) {
+      delete notifySeeds[id]
+      await browser.storage.local.set({
+        notifySeeds,
+        chat: {
+          session: crypto.randomUUID(),
+          messages: [{ role: 'context', text: seed }],
+        },
+      })
+      await browser.tabs.create({ url: browser.runtime.getURL('chat.html#tab') })
+    }
+    await browser.notifications.clear(id).catch(() => {})
+  })
 }
 
 async function run(action, params) {

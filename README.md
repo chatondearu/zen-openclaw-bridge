@@ -137,10 +137,15 @@ act '{"action":"tabs.focus","params":{"url":"https://app.slack.com/client"}}'
 act '{"action":"page.snapshot","params":{"tabId":12}}'
 act '{"action":"page.click","params":{"tabId":12,"selector":"[data-qa=\"channel_sidebar_name_general\"]"}}'
 act '{"action":"page.type","params":{"tabId":12,"selector":"[data-qa=\"message_input\"] [contenteditable]","text":"draft"}}'
+act '{"action":"notify.show","params":{"persona":{"name":"Cyrus","emoji":"⚙️"},"title":"⚙️ Cyrus","body":"18 archive candidates — review when you can.","chatSeed":"18 archive candidates — review when you can."}}'
 ```
 
 Response: `{"ok":true,"result":…}` or `{"ok":false,"error":"…"}` (HTTP 502),
 20 s timeout. No action ever posts a message: the human confirms.
+
+`notify.show` is an outbound OS toast (not a page actor). Toggle **Cyrus
+notifications** in options (default on). Click opens chat with `chatSeed` as
+context. Grant the `notifications` permission when prompted after reload.
 
 ### CLI
 

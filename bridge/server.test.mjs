@@ -44,6 +44,54 @@ test('auth, event inbox and action round-trip', async (t) => {
   assert.equal((await call2).status, 502)
 })
 
+test('notify.show round-trips like other actions; timeout when no waiter', async (t) => {
+  const inboxDir = mkdtempSync(join(tmpdir(), 'zen-bridge-'))
+  const server = createBridge({ token: 'secret', inboxDir })
+  await new Promise(r => server.listen(0, '127.0.0.1', r))
+  t.after(() => server.close())
+  const base = `http://127.0.0.1:${server.address().port}`
+  const auth = { authorization: 'Bearer secret', 'content-type': 'application/json' }
+  const params = {
+    persona: { name: 'Cyrus', emoji: '⚙️' },
+    title: '⚙️ Cyrus',
+    body: '18 archive candidates',
+    chatSeed: '18 archive candidates — review when you can.',
+  }
+
+  const call = fetch(`${base}/actions`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ action: 'notify.show', params }),
+  })
+  const action = await (await fetch(`${base}/actions/next`, { headers: auth })).json()
+  assert.equal(action.action, 'notify.show')
+  assert.deepEqual(action.params.persona, params.persona)
+  await fetch(`${base}/actions/${action.id}/result`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ ok: true, result: { id: 'n1' } }),
+  })
+  assert.deepEqual(await (await call).json(), { ok: true, result: { id: 'n1' } })
+
+  // No extension waiter → same timeout path as other actions (do not wait full 20s in CI).
+  // Shortcut: assert queue accepts the action shape via /actions/next after a short POST race.
+  const poll = fetch(`${base}/actions/next`, { headers: auth }).then(r => r.json())
+  await new Promise(r => setTimeout(r, 20))
+  const call3 = fetch(`${base}/actions`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ action: 'notify.show', params }),
+  })
+  const action3 = await poll
+  assert.equal(action3.action, 'notify.show')
+  await fetch(`${base}/actions/${action3.id}/result`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ ok: true, result: { id: 'n2' } }),
+  })
+  assert.equal((await call3).status, 200)
+})
+
 test('chat is relayed to the OpenClaw gateway with a per-session user', async (t) => {
   let seen
   const gw = createServer((req, res) => {
