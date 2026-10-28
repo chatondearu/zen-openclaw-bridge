@@ -30,9 +30,23 @@ function bridge(cfg, path, init = {}) {
 
 // --- Observer ---------------------------------------------------------------
 
+function setWatchKey(watchKey) {
+  window.__zenWatchKey = watchKey
+}
+
 async function observe(tab, cfg) {
-  if (allowed(tab.url, cfg.allowlist))
-    await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ['observer.js'] }).catch(e => console.warn('[zen-openclaw] inject failed', tab.url, e))
+  if (!allowed(tab.url, cfg.allowlist))
+    return
+  await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ['observer.js'] }).catch(e => console.warn('[zen-openclaw] inject failed', tab.url, e))
+  const watch = matchWatchPage(tab.url, cfg.watchPages || [])
+  await browser.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: setWatchKey,
+    args: [watch?.key ?? null],
+  }).catch(() => {})
+  if (!watch)
+    return
+  await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ['watch-observer.js'] }).catch(e => console.warn('[zen-openclaw] watch inject failed', tab.url, e))
 }
 
 async function observeAll() {
@@ -42,23 +56,49 @@ async function observeAll() {
 }
 
 browser.tabs.onUpdated.addListener(async (tabId, info, tab) => {
-  const cfg = info.status === 'complete' && await active()
+  const cfg = (info.url || info.status === 'complete') && await active()
   if (cfg)
-    observe(tab, cfg)
+    await observe(tab, cfg)
 })
 
 browser.runtime.onMessage.addListener(async (msg, sender) => {
   if (msg?.type === 'chat.send' && sender.url?.startsWith(browser.runtime.getURL('')))
     return chat(msg.text)
   const cfg = await active()
-  if (!cfg || msg?.type !== 'page.observed' || !allowed(sender.tab?.url, cfg.allowlist))
+  if (!cfg || !allowed(sender.tab?.url, cfg.allowlist))
     return
-  const { type, title, attention, text } = msg
-  await bridge(cfg, '/events', {
-    method: 'POST',
-    body: JSON.stringify({ type, source: 'zen', tabId: sender.tab.id, url: sender.tab.url, title, attention, text }),
-  }).catch(e => console.warn('[zen-openclaw] event not delivered', e))
-  pollLoop()
+
+  if (msg?.type === 'page.observed') {
+    const { type, title, attention, text } = msg
+    await bridge(cfg, '/events', {
+      method: 'POST',
+      body: JSON.stringify({ type, source: 'zen', tabId: sender.tab.id, url: sender.tab.url, title, attention, text }),
+    }).catch(e => console.warn('[zen-openclaw] event not delivered', e))
+    pollLoop()
+    return
+  }
+
+  if (msg?.type === 'watch.changed') {
+    const { watchKey, title, hash, excerpt } = msg
+    const watch = matchWatchPage(sender.tab.url, cfg.watchPages || [])
+    if (!watch || watch.key !== watchKey)
+      return
+    await bridge(cfg, '/events', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'watch.digest',
+        source: 'zen',
+        tabId: sender.tab.id,
+        url: sender.tab.url,
+        title,
+        watchKey,
+        hash,
+        excerpt,
+        attention: true,
+      }),
+    }).catch(e => console.warn('[zen-openclaw] watch digest not delivered', e))
+    pollLoop()
+  }
 })
 
 // --- Chat -------------------------------------------------------------------

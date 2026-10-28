@@ -4,7 +4,10 @@ A WebExtension for **Zen** (Firefox) that connects your signed-in tabs to an
 **OpenClaw** agent:
 
 - **Observer**: on allowlisted origins, sends the tab title (unread/mention
-  markers) and a text excerpt.
+  markers) and a text excerpt. **Watch pages** (Slack Mentions, Slack Activity,
+  Linear Inbox) additionally emit `watch.digest` when rendered list content
+  changes (content hash), not only when the title changes. See
+  [ADR-004](docs/ADR-004-watch-pages.md).
 - **Actor**: OpenClaw can list/focus tabs, take a snapshot, click and type —
   never submit (no Enter key: drafts only).
 - **Chat**: the toolbar button opens a chat with your OpenClaw agent, with
@@ -18,7 +21,8 @@ By default everything stays local: extension → bridge `http://127.0.0.1:18901`
 JSON files in the OpenClaw inbox. The bridge can also run on another machine
 (HTTPS). Design and trade-offs: [ADR-001](docs/ADR-001-zen-bridge.md),
 [ADR-002](docs/ADR-002-remote-bridge-and-chat.md),
-[ADR-003](docs/ADR-003-persistent-background-cli-and-openclaw-tool.md).
+[ADR-003](docs/ADR-003-persistent-background-cli-and-openclaw-tool.md),
+[ADR-004](docs/ADR-004-watch-pages.md).
 
 ## Requirements
 
@@ -85,6 +89,41 @@ ls "$OPENCLAW_STATE_DIR/inbox/web"
 ```
 
 A new event is emitted on every title change (new message, mention).
+
+### Watch digests (Mentions, Activity, Linear Inbox)
+
+Default watch keys (editable in options, one line per rule:
+`key|substring[,substring…]`):
+
+| `watchKey` | Substrings |
+| --- | --- |
+| `slack-mentions` | `/mentions` |
+| `slack-activity` | `/activity-inbox` |
+| `linear-inbox` | `linear.app/`, `/inbox` |
+
+On Beamy (2026-10-28), Slack Activity lives at `/activity-inbox`; navigating to
+Mentions often redirects to that same surface. Linear Inbox matches any
+`linear.app/…/inbox…` path.
+
+When watch-matched tab content changes, a digest lands in the same inbox folder:
+
+```json
+{
+  "receivedAt": "2026-10-28T17:05:01.914Z",
+  "type": "watch.digest",
+  "source": "zen",
+  "tabId": 12,
+  "url": "https://app.slack.com/client/T105LTTB2/activity-inbox",
+  "title": "Activité",
+  "watchKey": "slack-activity",
+  "hash": "8f3a2b1c",
+  "excerpt": "…last visible list text…",
+  "attention": true
+}
+```
+
+A nix-config poller (`openclaw-work-zen-watch.sh`) turns new digests into foam
+inbox notes; other tabs still use `page.observed` only.
 
 ## 4. Actions (OpenClaw side)
 

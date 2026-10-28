@@ -5,6 +5,7 @@ browser.storage.local.get(DEFAULTS).then((cfg) => {
   $('bridgeUrl').value = cfg.bridgeUrl
   $('token').value = cfg.token
   $('allowlist').value = cfg.allowlist.join('\n')
+  $('watchPages').value = (cfg.watchPages || []).map(p => `${p.key}|${(p.urlIncludes || []).join(',')}`).join('\n')
   $('paused').checked = cfg.paused
   checkBridge(cfg.bridgeUrl)
 })
@@ -41,12 +42,17 @@ $('form').addEventListener('submit', async (e) => {
     status.textContent = 'Invalid origin: use hostnames like slack.com or *.slack.com.'
     return
   }
+  const watchPages = $('watchPages').value.split('\n').map(s => s.trim()).filter(Boolean).map((line) => {
+    const [key, rest] = line.split('|')
+    return { key: (key || '').trim(), urlIncludes: (rest || '').split(',').map(x => x.trim()).filter(Boolean) }
+  }).filter(p => p.key && p.urlIncludes.length)
   // Must run first, inside the user gesture.
   const granted = await browser.permissions.request({ origins: [bridgeOrigin, ...allowlist.map(h => `*://${h}/*`)] })
   await browser.storage.local.set({
     bridgeUrl,
     token: $('token').value.trim(),
     allowlist,
+    watchPages,
     paused: $('paused').checked,
   })
   status.textContent = granted ? 'Saved.' : 'Saved, but host access was refused: the bridge or some origins are unreachable.'

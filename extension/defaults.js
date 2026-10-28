@@ -4,4 +4,9 @@ const DEFAULTS = {
   token: '',
   allowlist: ['*.slack.com', 'mail.google.com', 'calendar.google.com', 'github.com', 'linear.app', 'claude.ai'],
   paused: false,
+  watchPages: [
+    { key: 'slack-mentions', urlIncludes: ['/mentions'] },
+    { key: 'slack-activity', urlIncludes: ['/activity-inbox'] },
+    { key: 'linear-inbox', urlIncludes: ['linear.app/', '/inbox'] },
+  ],
 }

@@ -21,6 +21,9 @@
     <input id="token" type="password" autocomplete="off">
     <label for="allowlist">Allowed origins (one hostname per line, <code>*.</code> for subdomains)</label>
     <textarea id="allowlist" rows="5"></textarea>
+    <label for="watchPages">Watch pages (one per line: <code>key|substring[,substring…]</code>)</label>
+    <textarea id="watchPages" rows="4"></textarea>
+    <small>Example: <code>slack-mentions|/mentions</code> — all substrings must appear in the tab URL.</small>
     <label class="pause"><input id="paused" type="checkbox"> Pause — send nothing, run no action</label>
     <p><button type="submit">Save</button></p>
   </form>

@@ -30,6 +30,7 @@
   "background": {
     "scripts": [
       "defaults.js",
+      "watch-match.js",
       "background.js"
     ],
     "persistent": true
