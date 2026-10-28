@@ -60,6 +60,10 @@ function createSandbox() {
     browser,
     console,
     DEFAULTS: defaults,
+    capNotifyBody: (text, max = 200) => {
+      const s = String(text ?? '').trim()
+      return s.length <= max ? s : `${s.slice(0, Math.max(0, max - 1))}…`
+    },
     fetch: async () => {
       calls.push({ fetch: true })
       throw new Error('offline')

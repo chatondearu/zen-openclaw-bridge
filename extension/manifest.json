@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zen ↔ OpenClaw bridge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Observe allowlisted tabs, let OpenClaw act on them and chat with it through a bridge you control.",
   "browser_specific_settings": {
     "gecko": {
@@ -18,6 +18,7 @@
     "storage",
     "tabs",
     "scripting",
+    "notifications",
     "*://*.slack.com/*",
     "https://mail.google.com/*",
     "https://calendar.google.com/*",

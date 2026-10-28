@@ -7,6 +7,7 @@ browser.storage.local.get(DEFAULTS).then((cfg) => {
   $('allowlist').value = cfg.allowlist.join('\n')
   $('watchPages').value = (cfg.watchPages || []).map(p => `${p.key}|${(p.urlIncludes || []).join(',')}`).join('\n')
   $('paused').checked = cfg.paused
+  $('cyrusNotifications').checked = cfg.cyrusNotifications !== false
   checkBridge(cfg.bridgeUrl)
 })
 
@@ -54,6 +55,7 @@ $('form').addEventListener('submit', async (e) => {
     allowlist,
     watchPages,
     paused: $('paused').checked,
+    cyrusNotifications: $('cyrusNotifications').checked,
   })
   status.textContent = granted ? 'Saved.' : 'Saved, but host access was refused: the bridge or some origins are unreachable.'
   checkBridge(bridgeUrl)
