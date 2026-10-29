@@ -35,8 +35,10 @@ JSON files in the OpenClaw inbox. The bridge can also run on another machine
 OPENCLAW_STATE_DIR=/path/to/openclaw-work node bridge/server.mjs
 ```
 
-It prints its URL, the inbox folder and the **pairing token** (generated once in
-`~/.config/zen-openclaw-bridge/token`, mode 600).
+It prints its URL, the inbox folder and where the **pairing token** lives
+(generated once in `~/.config/zen-openclaw-bridge/token`, mode 600; the token
+itself is never logged). Copy it with
+`pbcopy < ~/.config/zen-openclaw-bridge/token`.
 
 | Variable | Default |
 |---|---|
@@ -63,7 +65,7 @@ It prints its URL, the inbox folder and the **pairing token** (generated once in
 The options page opens on install:
 
 1. **Bridge URL**: `http://127.0.0.1:18901` locally, or `https://…` for a remote bridge
-2. **Pairing token**: the one printed by the bridge
+2. **Pairing token**: the content of `~/.config/zen-openclaw-bridge/token`
 3. **Save** → accept the host access request (bridge + sites)
 
 ## 3. Smoke test

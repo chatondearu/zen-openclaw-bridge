@@ -98,7 +98,7 @@ them on request, and chat with the agent. Kickoff brief: [PROMPT.md](PROMPT.md).
 ```bash
 node --test bridge/*.test.mjs                 # bridge tests (Node ≥ 20, no install)
 npx --yes web-ext@8 lint -s extension         # must stay at 0 errors / 0 warnings / 0 notices
-node bridge/server.mjs                        # run the bridge (prints the pairing token)
+node bridge/server.mjs                        # run the bridge (token in ~/.config/zen-openclaw-bridge/token)
 npx --yes web-ext@8 run -s extension --firefox=/Applications/Zen.app/Contents/MacOS/zen
 ```
 
@@ -131,7 +131,8 @@ a feature truly needs one.
    route except `/health`, and sends no CORS headers.
 6. The OpenClaw gateway token lives only on the bridge host, never in the browser.
 7. `page.type` never submits (no Enter); nothing auto-sends messages.
-8. Never store or read site cookies/tokens; never commit tokens or inbox files.
+8. Never store or read site cookies/tokens; never commit tokens or inbox files;
+   never print the pairing or gateway token to stdout/logs.
 
 ### Gotchas
 

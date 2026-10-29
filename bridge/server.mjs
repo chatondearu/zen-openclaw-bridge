@@ -11,7 +11,9 @@ const ACTION_TIMEOUT_MS = 20_000
 const POLL_TIMEOUT_MS = 25_000
 const MAX_BODY = 1_000_000
 
-export function loadToken(file = join(homedir(), '.config', 'zen-openclaw-bridge', 'token')) {
+export const TOKEN_FILE = join(homedir(), '.config', 'zen-openclaw-bridge', 'token')
+
+export function loadToken(file = TOKEN_FILE) {
   if (process.env.ZEN_BRIDGE_TOKEN)
     return process.env.ZEN_BRIDGE_TOKEN
   try {
@@ -198,6 +200,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     console.log(`zen-openclaw-bridge listening on http://${host}:${port}`)
     console.log(`inbox: ${inboxDir}`)
     console.log(`chat -> ${gateway.url} (${gateway.agent})`)
-    console.log(`pairing token: ${token}`)
+    // Never log the token itself: logs end up in world-readable files.
+    console.log(`pairing token: ${process.env.ZEN_BRIDGE_TOKEN ? 'from ZEN_BRIDGE_TOKEN' : TOKEN_FILE}`)
   })
 }
